@@ -13,8 +13,8 @@ namespace Lab01
     public partial class Lab01_Bai06 : Form
     {
         Dictionary<string, (int giaVe, List<int> phongChieu)> phim = new();
-        Dictionary<int, HashSet<string>> gheDaMua = new(); // Lưu ghế đã mua theo phòng
-        Dictionary<int, string> veDaMuaTheoPhong = new();   // 1 người chỉ được 1 vé mỗi rạp
+        Dictionary<int, HashSet<string>> gheDaMua = new(); // Ghế đã có người mua
+        Dictionary<int, HashSet<string>> gheDaMuaCuaKhach = new(); // Ghế khách hiện tại đã mua theo phòng
 
         public Lab01_Bai06()
         {
@@ -38,6 +38,7 @@ namespace Lab01
             for (int i = 1; i <= 3; i++)
             {
                 gheDaMua[i] = new HashSet<string>();
+                gheDaMuaCuaKhach[i] = new HashSet<string>();
             }
         }
 
@@ -57,7 +58,6 @@ namespace Lab01
 
             int phong = int.Parse(cboPhong.Text.Split(' ')[1]);
 
-            // Tạo nút ghế
             string[] hang = { "A", "B", "C" };
             foreach (string h in hang)
             {
@@ -97,26 +97,54 @@ namespace Lab01
             Button btn = sender as Button;
             int phong = (int)btn.Tag;
             string ghe = btn.Text;
+            string tenKH = txtTenKH.Text.Trim();
+            if (tenKH == "") tenKH = "Khách vãng lai";
 
-            // kiểm tra nếu người này đã mua vé ở phòng này rồi
-            if (veDaMuaTheoPhong.ContainsKey(phong))
-            {
-                MessageBox.Show($"Bạn đã mua vé ở phòng {phong} rồi!");
-                return;
-            }
-
-            // kiểm tra vé đã có người khác mua
+            // kiểm tra nếu ghế đã có người mua
             if (gheDaMua[phong].Contains(ghe))
             {
-                MessageBox.Show($"Ghế {ghe} đã được mua!");
+                MessageBox.Show($"Ghế {ghe} đã được người khác mua!");
                 return;
             }
 
-            // Ghi nhận vé đã mua
-            gheDaMua[phong].Add(ghe);
-            veDaMuaTheoPhong[phong] = ghe;
-            btn.BackColor = Color.Gray;
-            btn.Enabled = false;
+            // đếm số phòng mà khách đã mua vé
+            int soPhongDaMua = gheDaMuaCuaKhach.Count(p => p.Value.Count > 0);
+
+            // Nếu khách đã mua ở >= 2 phòng → không cho mua thêm
+            if (soPhongDaMua >= 2 && !gheDaMuaCuaKhach.ContainsKey(phong))
+            {
+                MessageBox.Show("Bạn chỉ được mua tối đa ở 2 phòng, mỗi phòng 1 vé!");
+                return;
+            }
+
+            // Nếu khách đã mua ở 2 phòng khác nhau rồi
+            if (soPhongDaMua >= 2 && gheDaMuaCuaKhach[phong].Count == 0)
+            {
+                MessageBox.Show("Bạn đã mua ở 2 phòng khác nhau, không thể mua thêm!");
+                return;
+            }
+
+            // Nếu khách đã mua ở 1 phòng khác và đang chọn sang phòng mới
+            if (soPhongDaMua == 1 && gheDaMuaCuaKhach[phong].Count == 0)
+            {
+                // chỉ cho phép mua 1 vé trong phòng mới
+                gheDaMua[phong].Add(ghe);
+                gheDaMuaCuaKhach[phong].Add(ghe);
+                btn.Enabled = false;
+                btn.BackColor = Color.Gray;
+            }
+            else if (soPhongDaMua <= 1) // vẫn trong 1 phòng => được mua nhiều ghế
+            {
+                gheDaMua[phong].Add(ghe);
+                gheDaMuaCuaKhach[phong].Add(ghe);
+                btn.Enabled = false;
+                btn.BackColor = Color.Gray;
+            }
+            else
+            {
+                MessageBox.Show("Bạn đã đạt giới hạn mua vé!");
+                return;
+            }
 
             // Hiển thị thông tin vé
             string phimChon = cboPhim.Text;
@@ -124,10 +152,6 @@ namespace Lab01
             int giaCoBan = phim[phimChon].giaVe;
             double heSo = LayHeSoTheoLoai(loaiVe);
             double thanhTien = giaCoBan * heSo;
-
-            string tenKH = txtTenKH.Text.Trim();
-            if (tenKH == "")
-                tenKH = "Khách vãng lai";
 
             txtThongTin.AppendText($"Khách: {tenKH}\r\n" +
                                    $"Phim: {phimChon}\r\n" +
@@ -158,8 +182,7 @@ namespace Lab01
 
         private void btnThoat_Click(object sender, EventArgs e)
         {
-            this.Close();
+            Close();
         }
-
     }
 }
